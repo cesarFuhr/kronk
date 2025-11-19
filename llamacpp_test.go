@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -21,9 +22,9 @@ var (
 )
 
 var (
-	libPath   = "libraries"
-	modelPath = "models"
-	imageFile = "samples/giraffe.jpg"
+	libPath   = filepath.Join(os.Getenv("TEST_MODEL_WORKSPACE"), "libraries")
+	modelPath = filepath.Join(os.Getenv("TEST_MODEL_WORKSPACE"), "models")
+	imageFile = filepath.Join(os.Getenv("TEST_MODEL_WORKSPACE"), "samples/giraffe.jpg")
 )
 
 func TestMain(m *testing.M) {
