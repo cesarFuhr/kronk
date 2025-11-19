@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/ardanlabs/llamacpp"
 	"github.com/hybridgroup/yzma/pkg/download"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -79,6 +79,7 @@ func TestChatCompletions(t *testing.T) {
 	// -------------------------------------------------------------------------
 
 	llm, err := llamacpp.New(concurrency, libPath, modelFile, llamacpp.Config{
+		LogSet:        llamacpp.LogSilent,
 		ContextWindow: 1024 * 32,
 	})
 	if err != nil {
@@ -103,36 +104,41 @@ func TestChatCompletions(t *testing.T) {
 		Temp: 0.7,
 	}
 
-	f := func() {
+	// -------------------------------------------------------------------------
+
+	f := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 
 		ch, err := llm.ChatCompletions(ctx, messages, params)
 		if err != nil {
-			t.Fatalf("chat completions: %v", err)
+			return fmt.Errorf("chat completions: %w", err)
 		}
 
 		var finalResponse strings.Builder
 		for msg := range ch {
 			if msg.Err != nil {
-				t.Fatalf("error from model: %v", msg.Err)
+				return fmt.Errorf("error from model: %w", msg.Err)
 			}
 			finalResponse.WriteString(msg.Response)
 		}
 
 		find := "Gorilla"
 		if !strings.Contains(finalResponse.String(), find) {
-			t.Fatalf("expected %q, got %q", find, finalResponse.String())
+			return fmt.Errorf("expected %q, got %q", find, finalResponse.String())
 		}
+
+		return nil
 	}
 
-	g := concurrency
-	var wg sync.WaitGroup
-	for range g {
-		wg.Go(f)
+	var g errgroup.Group
+	for range concurrency {
+		g.Go(f)
 	}
 
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		t.Errorf("error: %v", err)
+	}
 }
 
 func TestChatVision(t *testing.T) {
@@ -166,36 +172,39 @@ func TestChatVision(t *testing.T) {
 		Temp: 0.7,
 	}
 
-	f := func() {
+	f := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 
 		ch, err := llm.ChatVision(ctx, message, imageFile, params)
 		if err != nil {
-			t.Fatalf("chat vision: %v", err)
+			return fmt.Errorf("chat vision: %w", err)
 		}
 
 		var finalResponse strings.Builder
 		for msg := range ch {
 			if msg.Err != nil {
-				t.Fatalf("error from model: %v", msg.Err)
+				return fmt.Errorf("error from model: %w", msg.Err)
 			}
 			finalResponse.WriteString(msg.Response)
 		}
 
 		find := "giraffes"
 		if !strings.Contains(finalResponse.String(), find) {
-			t.Fatalf("expected %q, got %q", find, finalResponse.String())
+			return fmt.Errorf("expected %q, got %q", find, finalResponse.String())
 		}
+
+		return nil
 	}
 
-	g := concurrency
-	var wg sync.WaitGroup
-	for range g {
-		wg.Go(f)
+	var g errgroup.Group
+	for range concurrency {
+		g.Go(f)
 	}
 
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		t.Errorf("error: %v", err)
+	}
 }
 
 func TestEmbedding(t *testing.T) {
@@ -218,25 +227,28 @@ func TestEmbedding(t *testing.T) {
 
 	text := "Embed this sentence"
 
-	f := func() {
+	f := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 
 		embed, err := llm.Embed(ctx, text)
 		if err != nil {
-			t.Fatalf("embed: %v", err)
+			return fmt.Errorf("embed: %w", err)
 		}
 
 		if embed[0] == 0 || embed[len(embed)-1] == 0 {
-			t.Fatalf("expected to have values in the embedding")
+			return fmt.Errorf("expected to have values in the embedding")
 		}
+
+		return nil
 	}
 
-	g := concurrency
-	var wg sync.WaitGroup
-	for range g {
-		wg.Go(f)
+	var g errgroup.Group
+	for range concurrency {
+		g.Go(f)
 	}
 
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		t.Errorf("error: %v", err)
+	}
 }
