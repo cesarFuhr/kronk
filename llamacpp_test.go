@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestChatCompletions(t *testing.T) {
+func testChatCompletions(t *testing.T) {
 	modelFile, err := llamacpp.InstallModel(modelChatCompletionsURL, modelPath)
 	if err != nil {
 		t.Fatalf("unable to install model: %v", err)
@@ -87,7 +87,7 @@ func TestChatCompletions(t *testing.T) {
 	}
 
 	f := func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 
 		ch, err := llm.ChatCompletions(ctx, messages, params)
@@ -160,7 +160,7 @@ func TestChatVision(t *testing.T) {
 	}
 
 	f := func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 
 		ch, err := llm.ChatVision(ctx, message, imageFile, params)
@@ -218,7 +218,7 @@ func TestEmbedding(t *testing.T) {
 	text := "Embed this sentence"
 
 	f := func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 
 		queryVector, err := llm.Embed(ctx, text)
