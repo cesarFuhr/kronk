@@ -6,7 +6,7 @@ SHELL = $(if $(wildcard $(SHELL_PATH)),/bin/ash,/bin/bash)
 # Tests
 
 test:
-	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:libraries && \
+	export LD_LIBRARY_PATH=libraries && \
 	go test -v -count=1
 
 # ==============================================================================

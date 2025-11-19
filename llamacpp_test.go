@@ -32,6 +32,16 @@ func TestMain(m *testing.M) {
 	fmt.Println("imageFile      :", imageFile)
 	fmt.Println("LD_LIBRARY_PATH:", os.Getenv("LD_LIBRARY_PATH"))
 
+	if err := filepath.Walk(libPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		fmt.Println("lib:", path)
+		return nil
+	}); err != nil {
+		fmt.Printf("error walking model path: %v\n", err)
+	}
+
 	if err := filepath.Walk(modelPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -45,7 +55,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func testChatCompletions(t *testing.T) {
+func TestChatCompletions(t *testing.T) {
 	modelFile := modelChatCompletionsFile
 
 	// -------------------------------------------------------------------------
