@@ -32,6 +32,16 @@ func TestMain(m *testing.M) {
 	fmt.Println("modelPath:", modelPath)
 	fmt.Println("imageFile:", imageFile)
 
+	if err := filepath.Walk(modelPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		fmt.Println("Model:", path)
+		return nil
+	}); err != nil {
+		fmt.Printf("error walking model path: %v\n", err)
+	}
+
 	if err := llamacpp.InstallLlama(libPath, download.CPU, true); err != nil {
 		fmt.Printf("unable to install llamacpp: %v", err)
 		os.Exit(1)
