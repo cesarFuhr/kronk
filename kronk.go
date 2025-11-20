@@ -14,8 +14,10 @@ import (
 	"github.com/hybridgroup/yzma/pkg/mtmd"
 )
 
+// LogLevel represents the logging level.
 type LogLevel int
 
+// Set of logging levels supported by llamacpp.
 const (
 	LogSilent LogLevel = iota + 1
 	LogNormal
@@ -23,6 +25,7 @@ const (
 
 var libraryLocation string
 
+// Init initializes the llamacpp and yzma libraries.
 func Init(libPath string, logLevel LogLevel) error {
 	if err := llama.Load(libPath); err != nil {
 		return fmt.Errorf("unable to load library: %w", err)
