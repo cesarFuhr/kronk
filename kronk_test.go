@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 	fmt.Println("CONCURRENCY    :", concurrency)
 
 	fmt.Println("LIBRARIES:")
-	kronk.InstallLlama(libPath, download.CPU, false)
+	kronk.InstallLlama(libPath, download.CPU, true)
 	if err := filepath.Walk(libPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

@@ -29,5 +29,4 @@ tidy:
 
 deps-upgrade:
 	go get -u -v ./...
-	GOPROXY=direct go get github.com/hybridgroup/yzma@main
 	go mod tidy
