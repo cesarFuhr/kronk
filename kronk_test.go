@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	modelChatCompletionsFile = "models/qwen2.5-0.5b-instruct-q8_0.gguf"
-	modelChatVisionFile      = "models/Qwen2.5-VL-3B-Instruct-Q8_0.gguf"
-	projChatVisionFile       = "models/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf"
-	modelEmbedFile           = "models/embeddinggemma-300m-qat-Q8_0.gguf"
+	modelChatFile   = "models/qwen2.5-0.5b-instruct-q8_0.gguf"
+	modelVisionFile = "models/Qwen2.5-VL-3B-Instruct-Q8_0.gguf"
+	projVisionFile  = "models/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf"
+	modelEmbedFile  = "models/embeddinggemma-300m-qat-Q8_0.gguf"
 )
 
 var (
@@ -82,18 +82,19 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestChatCompletions(t *testing.T) {
-	modelFile := modelChatCompletionsFile
+// =============================================================================
+
+func initChatTest(t *testing.T) (*kronk.Kronk, []kronk.ChatMessage, kronk.Params) {
+	modelFile := modelChatFile
 
 	// -------------------------------------------------------------------------
 
-	llm, err := kronk.New(concurrency, modelFile, kronk.Config{
+	krn, err := kronk.New(concurrency, modelFile, kronk.Config{
 		ContextWindow: 1024 * 4,
 	})
 	if err != nil {
 		t.Fatalf("unable to load model: %v", err)
 	}
-	defer llm.Unload()
 
 	// -------------------------------------------------------------------------
 
@@ -112,15 +113,51 @@ func TestChatCompletions(t *testing.T) {
 		Temp: 0.7,
 	}
 
-	// -------------------------------------------------------------------------
+	return krn, messages, params
+}
+
+func TestChat(t *testing.T) {
+	krn, messages, params := initChatTest(t)
+	defer krn.Unload()
 
 	f := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*5*time.Second)
 		defer cancel()
 
-		ch, err := llm.ChatCompletions(ctx, messages, params)
+		response, err := krn.Chat(ctx, messages, params)
 		if err != nil {
-			return fmt.Errorf("chat completions: %w", err)
+			return fmt.Errorf("chat streaming: %w", err)
+		}
+
+		find := "Gorilla"
+		if !strings.Contains(response, find) {
+			return fmt.Errorf("expected %q, got %q", find, response)
+		}
+
+		return nil
+	}
+
+	var g errgroup.Group
+	for range concurrency {
+		g.Go(f)
+	}
+
+	if err := g.Wait(); err != nil {
+		t.Errorf("error: %v", err)
+	}
+}
+
+func TestChatStreaming(t *testing.T) {
+	krn, messages, params := initChatTest(t)
+	defer krn.Unload()
+
+	f := func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*5*time.Second)
+		defer cancel()
+
+		ch, err := krn.ChatStreaming(ctx, messages, params)
+		if err != nil {
+			return fmt.Errorf("chat streaming: %w", err)
 		}
 
 		var finalResponse strings.Builder
@@ -149,13 +186,15 @@ func TestChatCompletions(t *testing.T) {
 	}
 }
 
-func TestChatVision(t *testing.T) {
+// =============================================================================
+
+func initVisionTest(t *testing.T) (*kronk.Kronk, kronk.ChatMessage, kronk.Params) {
 	if runtime.GOOS == "darwin" && os.Getenv("RUN_MACOS") == "" {
 		t.Skip("skipping test since it takes too long to run")
 	}
 
-	modelFile := modelChatVisionFile
-	projFile := projChatVisionFile
+	modelFile := modelVisionFile
+	projFile := projVisionFile
 
 	// -------------------------------------------------------------------------
 
@@ -163,11 +202,10 @@ func TestChatVision(t *testing.T) {
 		ContextWindow: 1024 * 4,
 	}
 
-	llm, err := kronk.New(concurrency, modelFile, cfg, kronk.WithProjection(projFile))
+	krn, err := kronk.New(concurrency, modelFile, cfg, kronk.WithProjection(projFile))
 	if err != nil {
 		t.Fatalf("unable to create inference model: %v", err)
 	}
-	defer llm.Unload()
 
 	// -------------------------------------------------------------------------
 
@@ -184,13 +222,51 @@ func TestChatVision(t *testing.T) {
 		Temp: 0.7,
 	}
 
+	return krn, message, params
+}
+
+func TestVision(t *testing.T) {
+	krn, message, params := initVisionTest(t)
+	defer krn.Unload()
+
 	f := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*5*time.Second)
 		defer cancel()
 
-		ch, err := llm.ChatVision(ctx, message, imageFile, params)
+		response, err := krn.Vision(ctx, message, imageFile, params)
 		if err != nil {
-			return fmt.Errorf("chat vision: %w", err)
+			return fmt.Errorf("vision streaming: %w", err)
+		}
+
+		find := "giraffes"
+		if !strings.Contains(response, find) {
+			return fmt.Errorf("expected %q, got %q", find, response)
+		}
+
+		return nil
+	}
+
+	var g errgroup.Group
+	for range concurrency {
+		g.Go(f)
+	}
+
+	if err := g.Wait(); err != nil {
+		t.Errorf("error: %v", err)
+	}
+}
+
+func TestVisionStreaming(t *testing.T) {
+	krn, message, params := initVisionTest(t)
+	defer krn.Unload()
+
+	f := func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*5*time.Second)
+		defer cancel()
+
+		ch, err := krn.VisionStreaming(ctx, message, imageFile, params)
+		if err != nil {
+			return fmt.Errorf("vision streaming: %w", err)
 		}
 
 		var finalResponse strings.Builder
@@ -229,11 +305,11 @@ func TestEmbedding(t *testing.T) {
 		Embeddings:    true,
 	}
 
-	llm, err := kronk.New(concurrency, modelFile, cfg)
+	krn, err := kronk.New(concurrency, modelFile, cfg)
 	if err != nil {
 		t.Fatalf("unable to create inference model: %v", err)
 	}
-	defer llm.Unload()
+	defer krn.Unload()
 
 	// -------------------------------------------------------------------------
 
@@ -243,7 +319,7 @@ func TestEmbedding(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*5*time.Second)
 		defer cancel()
 
-		embed, err := llm.Embed(ctx, text)
+		embed, err := krn.Embed(ctx, text)
 		if err != nil {
 			return fmt.Errorf("embed: %w", err)
 		}
