@@ -73,7 +73,7 @@ func (m *model) visionStreaming(ctx context.Context, message ChatMessage, imageF
 		}
 		defer mtmd.BitmapFree(bitmap)
 
-		m.processVisionStreaming(ctx, lctx, toSampler(params), ch)
+		m.processTokens(ctx, modeVision, prompt, lctx, toSampler(params), ch)
 	}()
 
 	return ch
@@ -102,19 +102,8 @@ func (m *model) processBitmap(lctx llama.Context, mtmdCtx mtmd.Context, imageFil
 
 	mtmd.Tokenize(mtmdCtx, output, input, []mtmd.Bitmap{bitmap})
 
-	// Docs indicate this function is NOT thread-safe.
-	func() {
-		m.muHEC.Lock()
-		defer m.muHEC.Unlock()
-		var n llama.Pos
-		mtmd.HelperEvalChunks(mtmdCtx, lctx, output, 0, 0, int32(m.ctxParams.NBatch), true, &n)
-	}()
+	var n llama.Pos
+	mtmd.HelperEvalChunks(mtmdCtx, lctx, output, 0, 0, int32(m.ctxParams.NBatch), true, &n)
 
 	return bitmap, nil
-}
-
-func (m *model) processVisionStreaming(ctx context.Context, lctx llama.Context, sampler llama.Sampler, ch chan<- ChatResponse) {
-	tokens := []llama.Token{llama.SamplerSample(sampler, lctx, -1)}
-
-	m.processTokens(ctx, tokens, lctx, sampler, ch)
 }

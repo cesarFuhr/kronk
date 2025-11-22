@@ -48,7 +48,7 @@ func (m *model) chatStreaming(ctx context.Context, messages []ChatMessage, param
 		}()
 
 		prompt := m.applyChatTemplate(messages)
-		m.processChatStreaming(ctx, lctx, prompt, toSampler(params), ch)
+		m.processTokens(ctx, modeChat, prompt, lctx, toSampler(params), ch)
 	}()
 
 	return ch
@@ -64,10 +64,4 @@ func (m *model) applyChatTemplate(messages []ChatMessage) string {
 	l := llama.ChatApplyTemplate(m.template, msgs, true, buf)
 
 	return string(buf[:l])
-}
-
-func (m *model) processChatStreaming(ctx context.Context, lctx llama.Context, prompt string, sampler llama.Sampler, ch chan<- ChatResponse) {
-	tokens := llama.Tokenize(m.vocab, prompt, true, true)
-
-	m.processTokens(ctx, tokens, lctx, sampler, ch)
 }

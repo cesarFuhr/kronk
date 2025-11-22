@@ -3,9 +3,13 @@ package kronk
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/hybridgroup/yzma/pkg/llama"
+)
+
+const (
+	modeChat   = "chat"
+	modeVision = "vision"
 )
 
 type model struct {
@@ -15,7 +19,6 @@ type model struct {
 	ctxParams llama.ContextParams
 	template  string
 	projFile  string
-	muHEC     sync.Mutex
 }
 
 func newModel(modelFile string, cfg ModelConfig, options ...func(m *model) error) (*model, error) {
@@ -100,18 +103,40 @@ func (m *model) modelInfo() ModelInfo {
 	}
 }
 
-func (m *model) processTokens(ctx context.Context, startingTokens []llama.Token, lctx llama.Context, sampler llama.Sampler, ch chan<- ChatResponse) {
+func (m *model) processTokens(ctx context.Context, mode string, prompt string, lctx llama.Context, sampler llama.Sampler, ch chan<- ChatResponse) {
+	var inputTokens int
 	var outputTokens int
 	var contextTokens int
+	var tokens []llama.Token
 
-	tokens := startingTokens
+	switch mode {
+	case modeChat:
+		tokens = llama.Tokenize(m.vocab, prompt, true, true)
+
+	case modeVision:
+		tokens = []llama.Token{llama.SamplerSample(sampler, lctx, -1)}
+	}
+
+	batch := llama.BatchGetOne(tokens)
+
+	switch mode {
+	case modeChat:
+		inputTokens = int(batch.NTokens)
+		contextTokens += inputTokens
+
+	case modeVision:
+		inpTokens := llama.Tokenize(m.vocab, prompt, true, true)
+		inpBatch := llama.BatchGetOne(inpTokens)
+
+		inputTokens = int(inpBatch.NTokens)
+		contextTokens += inputTokens
+
+		outputTokens = int(batch.NTokens)
+		contextTokens += outputTokens
+	}
 
 	const bufferSize = 32 * 1024
 	buf := make([]byte, bufferSize)
-
-	batch := llama.BatchGetOne(tokens)
-	inputTokens := int(batch.NTokens)
-	contextTokens += inputTokens
 
 	for outputTokens < m.cfg.MaxTokens {
 		select {
