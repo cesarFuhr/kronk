@@ -1,6 +1,6 @@
 package kronk
 
-const currentVersion = "0.6.2"
+const currentVersion = "0.7.0"
 
 // Version returns the current version of the kronk package.
 func Version() string {
