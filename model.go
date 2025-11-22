@@ -107,6 +107,8 @@ func (m *model) processTokens(ctx context.Context, mode string, prompt string, l
 	var inputTokens int
 	var outputTokens int
 	var contextTokens int
+	var totalOutTokens int
+
 	var tokens []llama.Token
 	var batch llama.Batch
 
@@ -115,6 +117,7 @@ func (m *model) processTokens(ctx context.Context, mode string, prompt string, l
 
 	inputTokens = int(batch.NTokens)
 	inputTokens += inputTokens
+	contextTokens += inputTokens
 
 	switch mode {
 	case modeVision:
@@ -122,13 +125,14 @@ func (m *model) processTokens(ctx context.Context, mode string, prompt string, l
 		batch = llama.BatchGetOne(tokens)
 
 		outputTokens = int(batch.NTokens)
+		totalOutTokens += outputTokens
 		contextTokens += outputTokens
 	}
 
 	const bufferSize = 32 * 1024
 	buf := make([]byte, bufferSize)
 
-	for outputTokens < m.cfg.MaxTokens {
+	for totalOutTokens < m.cfg.MaxTokens {
 		select {
 		case <-ctx.Done():
 			ch <- ChatResponse{
@@ -182,6 +186,7 @@ func (m *model) processTokens(ctx context.Context, mode string, prompt string, l
 		batch = llama.BatchGetOne(tokens)
 
 		outputTokens = int(batch.NTokens)
+		totalOutTokens += outputTokens
 		contextTokens += outputTokens
 	}
 }
