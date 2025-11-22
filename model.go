@@ -132,7 +132,7 @@ func (m *model) processTokens(ctx context.Context, mode string, prompt string, l
 	const bufferSize = 32 * 1024
 	buf := make([]byte, bufferSize)
 
-	for totalOutTokens < m.cfg.MaxTokens {
+	for totalOutTokens <= m.cfg.MaxTokens {
 		select {
 		case <-ctx.Done():
 			ch <- ChatResponse{
