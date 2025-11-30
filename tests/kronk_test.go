@@ -162,8 +162,16 @@ func testChatResponse(resp model.ChatResponse, modelName string, object string, 
 	}
 
 	if object == model.ObjectChat {
-		if !strings.Contains(resp.Choice[0].Delta.Reasoning, find) {
-			return fmt.Errorf("reasoning: expected %q, got %q", find, resp.Choice[0].Delta.Reasoning)
+		switch {
+		case funct == "":
+			if !strings.Contains(resp.Choice[0].Delta.Reasoning, find) {
+				return fmt.Errorf("reasoning: expected %q, got %q", find, resp.Choice[0].Delta.Reasoning)
+			}
+
+		case funct != "":
+			if !strings.Contains(resp.Choice[0].Delta.Reasoning, funct) {
+				return fmt.Errorf("reasoning: expected %q, got %q", funct, resp.Choice[0].Delta.Reasoning)
+			}
 		}
 	}
 
