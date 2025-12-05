@@ -8,7 +8,9 @@ import (
 	"github.com/ardanlabs/kronk/cmd/kronk/libs"
 	"github.com/ardanlabs/kronk/cmd/kronk/list"
 	"github.com/ardanlabs/kronk/cmd/kronk/pull"
+	"github.com/ardanlabs/kronk/cmd/kronk/remove"
 	"github.com/ardanlabs/kronk/cmd/kronk/show"
+	"github.com/ardanlabs/kronk/cmd/kronk/website/api/services/kronk"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +53,8 @@ var serverCmd = &cobra.Command{
 	Long: `Start kronk server
 
 Environment Variables:
-      KRONK_HOST                  (default: 127.0.0.1:11434)     IP Address for the kronk server 
+      KRONK_WEB_API_HOST          (default: 0.0.0.0:3000)        IP Address for the app endpoints 
+	  KRONK_WEB_DEBUG_HOST        (default: 0.0.0.0:3010)        IP Address for the debug endpoints
       KRONK_MODELS                (default: $HOME/kronk/models)  The path to the models directory
 	  KRONK_PROCESSOR             (default: cpu)                 Options: cpu, cuda, metal, vulkan
       KRONK_DEVICE                (default: autodetection)       Device to use for inference 
@@ -61,8 +64,23 @@ Environment Variables:
       KRONK_MODEL_NUBatch         (default: 512)                 Physical batch size or the maximum number of tokens processed together during the initial prompt processing phase (also called "prompt ingestion") to populate the KV cache
       KRONK_MODEL_NThreads        (default: llama.cpp)           Number of threads to use for generation
       KRONK_MODEL_NThreadsBatch   (default: llama.cpp)           Number of threads to use for batch processing`,
-	Run: runServer,
+	Args: cobra.NoArgs,
+	Run:  runServer,
 }
+
+func runServer(cmd *cobra.Command, args []string) {
+	if err := kronk.Run(); err != nil {
+		if errors.Is(err, libs.ErrInvalidArguments) {
+			cmd.Help()
+			os.Exit(1)
+		}
+
+		fmt.Println("ERROR:", err)
+		os.Exit(1)
+	}
+}
+
+// =============================================================================
 
 var libsCmd = &cobra.Command{
 	Use:   "libs",
@@ -71,64 +89,8 @@ var libsCmd = &cobra.Command{
 
 Environment Variables:
       KRONK_PROCESSOR  (default: cpu)  Options: cpu, cuda, metal, vulkan`,
-	Run: runLibs,
-}
-
-var pullCmd = &cobra.Command{
-	Use:   "pull <MODEL_URL> <MMPROJ_URL>",
-	Short: "Pull a model from a registry, the mmproj file is optional",
-	Long: `Pull a model from a registry, the mmproj file is optional
-
-Environment Variables:
-      KRONK_MODELS  (default: $HOME/kronk/models)  The path to the models directory`,
-	Args: cobra.RangeArgs(1, 2),
-	Run:  runPull,
-}
-
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List models",
-	Long: `List models
-
-Environment Variables:
-      KRONK_MODELS  (default: $HOME/kronk/models)  The path to the models directory`,
-	Run: runList,
-}
-
-var showCmd = &cobra.Command{
-	Use:   "show <MODEL_NAME>",
-	Short: "Show information for a model",
-	Long: `Show information for a model
-
-Environment Variables:
-      KRONK_MODELS  (default: $HOME/kronk/models)  The path to the models directory`,
-	Args: cobra.ExactArgs(1),
-	Run:  runShow,
-}
-
-var psCmd = &cobra.Command{
-	Use:   "ps",
-	Short: "List running models",
-	Long: `List running models
-
-Environment Variables:
-      KRONK_HOST  IP Address for the kronk server (default 127.0.0.1:11434)`,
-	Run: runPs,
-}
-
-var rmCmd = &cobra.Command{
-	Use:   "rm MODEL_NAME",
-	Short: "Remove a model",
-	Long: `Remove a model
-
-Environment Variables:
-      KRONK_HOST  IP Address for the kronk server (default 127.0.0.1:11434)`,
-	Args: cobra.ExactArgs(1),
-	Run:  runRm,
-}
-
-func runServer(cmd *cobra.Command, args []string) {
-	fmt.Println("server command not implemented")
+	Args: cobra.NoArgs,
+	Run:  runLibs,
 }
 
 func runLibs(cmd *cobra.Command, args []string) {
@@ -143,11 +105,17 @@ func runLibs(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runPull(cmd *cobra.Command, args []string) {
-	if err := pull.Run(args); err != nil {
-		fmt.Println("ERROR:", err)
-		os.Exit(1)
-	}
+// =============================================================================
+
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List models",
+	Long: `List models
+
+Environment Variables:
+      KRONK_MODELS  (default: $HOME/kronk/models)  The path to the models directory`,
+	Args: cobra.NoArgs,
+	Run:  runList,
 }
 
 func runList(cmd *cobra.Command, args []string) {
@@ -162,17 +130,78 @@ func runList(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runShow(cmd *cobra.Command, args []string) {
-	if err := show.Run(args); err != nil {
-		fmt.Println("ERROR:", err)
-		os.Exit(1)
-	}
+// =============================================================================
+
+var psCmd = &cobra.Command{
+	Use:   "ps",
+	Short: "List running models",
+	Long: `List running models
+
+Environment Variables:
+      KRONK_HOST  IP Address for the kronk server (default 127.0.0.1:11434)`,
+	Run: runPs,
 }
 
 func runPs(cmd *cobra.Command, args []string) {
 	fmt.Println("ps command not implemented")
 }
 
+// =============================================================================
+
+var pullCmd = &cobra.Command{
+	Use:   "pull <MODEL_URL> <MMPROJ_URL>",
+	Short: "Pull a model from the web, the mmproj file is optional",
+	Long: `Pull a model from the web, the mmproj file is optional
+
+Environment Variables:
+      KRONK_MODELS  (default: $HOME/kronk/models)  The path to the models directory`,
+	Args: cobra.RangeArgs(1, 2),
+	Run:  runPull,
+}
+
+func runPull(cmd *cobra.Command, args []string) {
+	if err := pull.Run(args); err != nil {
+		fmt.Println("ERROR:", err)
+		os.Exit(1)
+	}
+}
+
+// =============================================================================
+
+var rmCmd = &cobra.Command{
+	Use:   "rm MODEL_NAME",
+	Short: "Remove a model",
+	Long: `Remove a model
+
+Environment Variables:
+      KRONK_HOST  IP Address for the kronk server (default 127.0.0.1:11434)`,
+	Args: cobra.ExactArgs(1),
+	Run:  runRm,
+}
+
 func runRm(cmd *cobra.Command, args []string) {
-	fmt.Println("rm command not implemented")
+	if err := remove.Run(args); err != nil {
+		fmt.Println("ERROR:", err)
+		os.Exit(1)
+	}
+}
+
+// =============================================================================
+
+var showCmd = &cobra.Command{
+	Use:   "show <MODEL_NAME>",
+	Short: "Show information for a model",
+	Long: `Show information for a model
+
+Environment Variables:
+      KRONK_MODELS  (default: $HOME/kronk/models)  The path to the models directory`,
+	Args: cobra.ExactArgs(1),
+	Run:  runShow,
+}
+
+func runShow(cmd *cobra.Command, args []string) {
+	if err := show.Run(args); err != nil {
+		fmt.Println("ERROR:", err)
+		os.Exit(1)
+	}
 }

@@ -16,7 +16,7 @@ func Run(args []string) error {
 	modelPath := defaults.ModelsDir()
 	modelName := args[0]
 
-	modelFile, err := install.FindModel(modelPath, modelName)
+	fi, err := install.FindModel(modelPath, modelName)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func Run(args []string) error {
 
 	const modelInstances = 1
 	krn, err := kronk.New(modelInstances, model.Config{
-		ModelFile: modelFile,
+		ModelFile: fi.ModelFile,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to load kronk: %w", err)
@@ -39,7 +39,8 @@ func Run(args []string) error {
 
 	mi := krn.ModelInfo()
 
-	fmt.Println()
+	fmt.Printf("Model Path: %s\n\n", modelPath)
+
 	fmt.Printf("Name:        %s\n", mi.Name)
 	fmt.Printf("Desc:        %s\n", mi.Desc)
 	fmt.Printf("Size:        %.2f MiB\n", float64(mi.Size)/(1024*1024))
