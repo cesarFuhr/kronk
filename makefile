@@ -46,7 +46,7 @@ install-gotooling:
 # Kronk CLI
 
 kronk-server:
-	go run cmd/kronk/main.go server | go run cmd/kronk/website/api/tooling/logfmt/main.go
+	go run cmd/kronk/main.go server | go run cmd/server/api/tooling/logfmt/main.go
 
 kronk-server-detach:
 	go run cmd/kronk/main.go server --detach
@@ -201,10 +201,10 @@ test: install-libraries install-models
 	export GOROUTINES=1 && \
 	export RUN_IN_PARALLEL=1 && \
 	export GITHUB_WORKSPACE=$(shell pwd) && \
-	CGO_ENABLED=0 go test -v -count=1 ./tests
-	CGO_ENABLED=0 go test -v -count=1 ./cache
-	CGO_ENABLED=0 go test -v -count=1 ./model
-	CGO_ENABLED=0 go test -v -count=1 ./tools/catalog
+	CGO_ENABLED=0 go test -v -count=1 ./sdk/kronk
+	CGO_ENABLED=0 go test -v -count=1 ./sdk//cache
+	CGO_ENABLED=0 go test -v -count=1 ./sdk//model
+	CGO_ENABLED=0 go test -v -count=1 ./sdk//tools/catalog
 
 # ==============================================================================
 # Go Modules support
