@@ -31,8 +31,11 @@ import (
 	"github.com/ardanlabs/kronk/sdk/kronk"
 	"github.com/ardanlabs/kronk/sdk/kronk/defaults"
 	"github.com/ardanlabs/kronk/sdk/kronk/model"
+	"github.com/ardanlabs/kronk/sdk/kronk/template"
+	"github.com/ardanlabs/kronk/sdk/tools/catalog"
 	"github.com/ardanlabs/kronk/sdk/tools/libs"
 	"github.com/ardanlabs/kronk/sdk/tools/models"
+	"github.com/ardanlabs/kronk/sdk/tools/templates"
 	"github.com/hybridgroup/yzma/pkg/download"
 )
 
@@ -61,26 +64,36 @@ func main() {
 }
 
 func run() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
 	libCfg, err := libs.NewConfig(
 		libPath,
 		runtime.GOARCH,
 		runtime.GOOS,
 		download.CPU.String(),
-		kronk.LogSilent.Int(),
 		true,
 	)
 	if err != nil {
 		return err
 	}
 
-	_, err = libs.Download(context.Background(), kronk.FmtLogger, libCfg)
+	_, err = libs.Download(ctx, kronk.FmtLogger, libCfg)
 	if err != nil {
 		return fmt.Errorf("unable to install llama.cpp: %w", err)
 	}
 
-	info, err := models.Download(context.Background(), kronk.FmtLogger, modelChatURL, "", modelPath)
+	info, err := models.Download(ctx, kronk.FmtLogger, modelChatURL, "", modelPath)
 	if err != nil {
 		return fmt.Errorf("unable to install chat model: %w", err)
+	}
+
+	if err := catalog.Download(ctx, defaults.BaseDir("")); err != nil {
+		return fmt.Errorf("unable to download catalog: %w", err)
+	}
+
+	if err := templates.Download(ctx, defaults.BaseDir("")); err != nil {
+		return fmt.Errorf("unable to download templates: %w", err)
 	}
 
 	// -------------------------------------------------------------------------
@@ -89,7 +102,7 @@ func run() error {
 		return fmt.Errorf("unable to init kronk: %w", err)
 	}
 
-	krnChat, err := kronk.New(modelInstances, model.Config{
+	krnChat, err := kronk.New(modelInstances, template.New(), model.Config{
 		Log:       kronk.FmtLogger,
 		ModelFile: info.ModelFile,
 		NBatch:    32 * 1024,

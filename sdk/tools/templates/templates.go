@@ -1,5 +1,5 @@
-// Package catalog provides tooling support for the catalog system.
-package catalog
+// Package templates provides template support.
+package templates
 
 import (
 	"net"
@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	localFolder = "catalogs"
-	indexFile   = ".index.yaml"
+	localFolder = "templates"
 )
 
 func hasNetwork() bool {

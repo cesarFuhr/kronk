@@ -1,4 +1,4 @@
-package catalog
+package templates
 
 import (
 	"context"
@@ -8,42 +8,32 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
-
-	"go.yaml.in/yaml/v2"
 )
 
 const (
-	shaFile = ".catalog_shas.json"
+	shaFile = ".template_shas.json"
 )
 
-// Download retrieves the catalog from github.com/ardanlabs/kronk_catalogs.
+// Download retrieves the templates from github.com/ardanlabs/kronk_catalogs.
 // Only files modified after the last download are fetched.
 func Download(ctx context.Context, basePath string) error {
 	if !hasNetwork() {
 		return nil
 	}
 
-	catalogDir := filepath.Join(basePath, localFolder)
-	if err := os.MkdirAll(catalogDir, 0755); err != nil {
-		return fmt.Errorf("creating catalogs directory: %w", err)
+	templatesDir := filepath.Join(basePath, localFolder)
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		return fmt.Errorf("creating templates directory: %w", err)
 	}
 
-	files, err := listGitHubFolder(ctx, "ardanlabs", "kronk_catalogs", "catalogs", catalogDir)
+	files, err := listGitHubFolder(ctx, "ardanlabs", "kronk_catalogs", "templates", templatesDir)
 	if err != nil {
-		return fmt.Errorf("listing catalogs: %w", err)
+		return fmt.Errorf("listing templates: %w", err)
 	}
 
 	for _, file := range files {
-		if err := downloadCatalog(ctx, catalogDir, file); err != nil {
-			return fmt.Errorf("download-catalog: %w", err)
-		}
-	}
-
-	if len(files) > 0 {
-		if err := buildIndex(basePath); err != nil {
-			return fmt.Errorf("build-index: %w", err)
+		if err := downloadFile(ctx, templatesDir, file); err != nil {
+			return fmt.Errorf("download-template: %w", err)
 		}
 	}
 
@@ -59,7 +49,7 @@ type gitHubFile struct {
 	Type        string `json:"type"`
 }
 
-func listGitHubFolder(ctx context.Context, owner string, repo string, path string, catalogDir string) ([]string, error) {
+func listGitHubFolder(ctx context.Context, owner string, repo string, path string, templatesDir string) ([]string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, path)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -83,7 +73,7 @@ func listGitHubFolder(ctx context.Context, owner string, repo string, path strin
 		return nil, fmt.Errorf("decoding response: %w", err)
 	}
 
-	localSHAs := readLocalSHAs(catalogDir)
+	localSHAs := readLocalSHAs(templatesDir)
 
 	var files []string
 	for _, item := range items {
@@ -95,14 +85,14 @@ func listGitHubFolder(ctx context.Context, owner string, repo string, path strin
 		}
 	}
 
-	if err := writeLocalSHAs(catalogDir, items); err != nil {
+	if err := writeLocalSHAs(templatesDir, items); err != nil {
 		return nil, fmt.Errorf("writing SHA file: %w", err)
 	}
 
 	return files, nil
 }
 
-func downloadCatalog(ctx context.Context, catalogDir string, url string) error {
+func downloadFile(ctx context.Context, destDir string, url string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
@@ -110,7 +100,7 @@ func downloadCatalog(ctx context.Context, catalogDir string, url string) error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("fetching catalog: %w", err)
+		return fmt.Errorf("fetching file: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -123,9 +113,9 @@ func downloadCatalog(ctx context.Context, catalogDir string, url string) error {
 		return fmt.Errorf("reading response: %w", err)
 	}
 
-	filePath := filepath.Join(catalogDir, filepath.Base(url))
+	filePath := filepath.Join(destDir, filepath.Base(url))
 	if err := os.WriteFile(filePath, body, 0644); err != nil {
-		return fmt.Errorf("writing catalog file: %w", err)
+		return fmt.Errorf("writing file: %w", err)
 	}
 
 	return nil
@@ -159,59 +149,4 @@ func writeLocalSHAs(dir string, items []gitHubFile) error {
 	}
 
 	return os.WriteFile(filepath.Join(dir, shaFile), data, 0644)
-}
-
-var biMutex sync.Mutex
-
-func buildIndex(basePath string) error {
-	biMutex.Lock()
-	defer biMutex.Unlock()
-
-	catalogDir := filepath.Join(basePath, localFolder)
-
-	entries, err := os.ReadDir(catalogDir)
-	if err != nil {
-		return fmt.Errorf("read catalog dir: %w", err)
-	}
-
-	index := make(map[string]string)
-
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
-			continue
-		}
-
-		if entry.Name() == indexFile {
-			continue
-		}
-
-		filePath := filepath.Join(catalogDir, entry.Name())
-
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			return fmt.Errorf("read file %s: %w", entry.Name(), err)
-		}
-
-		var catalog Catalog
-		if err := yaml.Unmarshal(data, &catalog); err != nil {
-			return fmt.Errorf("unmarshal %s: %w", entry.Name(), err)
-		}
-
-		for _, model := range catalog.Models {
-			modelID := strings.ToLower(model.ID)
-			index[modelID] = entry.Name()
-		}
-	}
-
-	indexData, err := yaml.Marshal(&index)
-	if err != nil {
-		return fmt.Errorf("marshal index: %w", err)
-	}
-
-	indexPath := filepath.Join(catalogDir, indexFile)
-	if err := os.WriteFile(indexPath, indexData, 0644); err != nil {
-		return fmt.Errorf("write index file: %w", err)
-	}
-
-	return nil
 }

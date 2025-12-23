@@ -32,7 +32,6 @@ type File struct {
 type Files struct {
 	Model File `yaml:"model"`
 	Proj  File `yaml:"proj"`
-	Jinja File `yaml:"jinja"`
 }
 
 // Model represents information for a model.
@@ -42,6 +41,7 @@ type Model struct {
 	OwnedBy      string       `yaml:"owned_by"`
 	ModelFamily  string       `yaml:"model_family"`
 	WebPage      string       `yaml:"web_page"`
+	Template     string       `yaml:"template"`
 	Files        Files        `yaml:"files"`
 	Capabilities Capabilities `yaml:"capabilities"`
 	Metadata     Metadata     `yaml:"metadata"`

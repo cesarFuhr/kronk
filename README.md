@@ -36,39 +36,15 @@ To install the Kronk tool run the following command:
 go install github.com/ardanlabs/kronk/cmd/kronk@latest
 ```
 
-Here is the help screen.
-
-```
-$ kronk help
-
-Go for hardware accelerated local inference with llama.cpp directly integrated
-into your applications via the yzma.
-Kronk provides a high-level API that feels similar to using an OpenAI-compatible API.
-
-Usage:
-  kronk [flags]
-  kronk [command]
-
-Available Commands:
-  catalog     Manage model catalog
-  help        Help about any command
-  libs        Install or upgrade llama.cpp libraries
-  model       Manage models
-  security    Manage security
-  server      Manage model server
-
-Flags:
-  -h, --help      help for kronk
-  -v, --version   version for kronk
-
-Use "kronk [command] --help" for more information about a command.
-```
-
 ## Roadmap
 
 Here is the existing [ROADMAP](ROADMAP.md) for the project and the things being worked on or things that would be nice to have. The roadmap is not in any particular order.
 
 If you are interested in helping in any way, please send an email to [Bill Kennedy](mailto:bill@ardanlabs.com).
+
+## Features
+
+Here is the existing [FEATURES](FEATURES.md) list for the project. The features are not in any particular order.
 
 ## Architecture
 
@@ -215,8 +191,11 @@ import (
 	"github.com/ardanlabs/kronk/sdk/kronk"
 	"github.com/ardanlabs/kronk/sdk/kronk/defaults"
 	"github.com/ardanlabs/kronk/sdk/kronk/model"
+	"github.com/ardanlabs/kronk/sdk/kronk/templater"
+	"github.com/ardanlabs/kronk/sdk/tools/catalog"
 	"github.com/ardanlabs/kronk/sdk/tools/libs"
 	"github.com/ardanlabs/kronk/sdk/tools/models"
+	"github.com/ardanlabs/kronk/sdk/tools/templates"
 	"github.com/hybridgroup/yzma/pkg/download"
 )
 
@@ -249,6 +228,7 @@ func run() error {
 
 	krn, err := kronk.New(modelInstances, model.Config{
 		ModelFile: info.ModelFile,
+		Templater: templater.New(),
 	})
 
 	if err != nil {
@@ -321,26 +301,36 @@ func run() error {
 }
 
 func installSystem() (models.Path, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
 	libCfg, err := libs.NewConfig(
 		libPath,
 		runtime.GOARCH,
 		runtime.GOOS,
 		download.CPU.String(),
-		kronk.LogSilent.Int(),
 		true,
 	)
 	if err != nil {
 		return models.Path{}, err
 	}
 
-	_, err = libs.Download(context.Background(), kronk.FmtLogger, libCfg)
+	_, err = libs.Download(ctx, kronk.FmtLogger, libCfg)
 	if err != nil {
 		return models.Path{}, fmt.Errorf("unable to install llama.cpp: %w", err)
 	}
 
-	mp, err := models.Download(context.Background(), kronk.FmtLogger, modelURL, "", modelPath)
+	mp, err := models.Download(ctx, kronk.FmtLogger, modelURL, "", modelPath)
 	if err != nil {
 		return models.Path{}, fmt.Errorf("unable to install model: %w", err)
+	}
+
+	if err := catalog.Download(ctx, defaults.BaseDir("")); err != nil {
+		return models.Path{}, fmt.Errorf("unable to download catalog: %w", err)
+	}
+
+	if err := templates.Download(ctx, defaults.BaseDir("")); err != nil {
+		return models.Path{}, fmt.Errorf("unable to download templates: %w", err)
 	}
 
 	return mp, nil

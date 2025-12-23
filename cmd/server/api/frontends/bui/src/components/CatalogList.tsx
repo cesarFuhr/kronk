@@ -101,9 +101,7 @@ export default function CatalogList() {
         if (data.model_file) {
           addMessage(`Model file: ${data.model_file}`, 'info');
         }
-        if (data.proj_file) {
-          addMessage(`Projection file: ${data.proj_file}`, 'info');
-        }
+
       },
       (errorMsg: string) => {
         addMessage(errorMsg, 'error');
@@ -376,10 +374,8 @@ export default function CatalogList() {
                     </span>
                   </div>
                   <div className="model-meta-item">
-                    <label>Jinja</label>
-                    <span>
-                      {modelInfo.files.jinja.url || '-'} {modelInfo.files.jinja.size && `(${modelInfo.files.jinja.size})`}
-                    </span>
+                    <label>Template</label>
+                    <span>{modelInfo.template || '-'}</span>
                   </div>
                 </div>
               </div>
