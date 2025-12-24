@@ -1,5 +1,8 @@
 ![kronk logo](./images/project/kronk_banner.jpg?v5)
 
+Copyright 2025 Ardan Labs  
+hello@ardanlabs.com
+
 # Kronk
 
 This project lets you use Go for hardware accelerated local inference with llama.cpp directly integrated into your applications via the [yzma](https://github.com/hybridgroup/yzma) module. Kronk provides a high-level API that feels similar to using an OpenAI compatible API.
@@ -8,8 +11,23 @@ This project also provides a model server for chat completions and embeddings. T
 
 Here is the current [catalog](https://github.com/ardanlabs/kronk_catalogs) of models that have been verified to work with Kronk.
 
-Copyright 2025 Ardan Labs  
-hello@ardanlabs.com
+To see all the documentation, clone the project and run the Kronk Model Server:
+
+```shell
+$ make kronk-server
+
+$ make website
+```
+
+You can also install Kronk, run the Kronk Model Server, and open the browser to localhost:8080
+
+```shell
+$ go install github.com/ardanlabs/kronk/cmd/kronk@latest
+
+$ kronk server start
+```
+
+## Project Status
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/ardanlabs/kronk.svg)](https://pkg.go.dev/github.com/ardanlabs/kronk)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ardanlabs/kronk)](https://goreportcard.com/report/github.com/ardanlabs/kronk)
@@ -33,7 +51,9 @@ Twitter: goinggodotnet
 To install the Kronk tool run the following command:
 
 ```shell
-go install github.com/ardanlabs/kronk/cmd/kronk@latest
+$ go install github.com/ardanlabs/kronk/cmd/kronk@latest
+
+$ kronk --help
 ```
 
 ## Roadmap
@@ -128,12 +148,6 @@ make example-question
 make example-vision
 ```
 
-[WEB](examples/web/main.go) - This example shows you a web service that provides a chat endpoint for asking questions to a model with a browser based chat UI.
-
-```shell
-make example-web
-```
-
 You can find more examples in the ArdanLabs AI training repo at [Example13](https://github.com/ardanlabs/ai-training/tree/main/cmd/examples/example13).
 
 ## Kronk Model Server
@@ -141,7 +155,7 @@ You can find more examples in the ArdanLabs AI training repo at [Example13](http
 The model server is OpenAI compatible and you can use OpenWebUI to interact with it. To start the Kronk model server run:
 
 ```shell
-kronk server
+kronk server start
 ```
 
 You will need to load a model if this is the first time you're using the system. To download a starter model run the catalog list command to see the current catalog of models:
@@ -191,7 +205,6 @@ import (
 	"github.com/ardanlabs/kronk/sdk/kronk/model"
 	"github.com/ardanlabs/kronk/sdk/tools/libs"
 	"github.com/ardanlabs/kronk/sdk/tools/models"
-	"github.com/ardanlabs/kronk/sdk/tools/templates"
 )
 
 const (
@@ -312,21 +325,6 @@ func installSystem() (models.Path, error) {
 	mp, err := mdls.Download(ctx, kronk.FmtLogger, modelURL, "")
 	if err != nil {
 		return models.Path{}, fmt.Errorf("unable to install model: %w", err)
-	}
-
-	// -------------------------------------------------------------------------
-
-	templates, err := templates.New()
-	if err != nil {
-		return models.Path{}, fmt.Errorf("unable to create template system: %w", err)
-	}
-
-	if err := templates.Download(ctx); err != nil {
-		return models.Path{}, fmt.Errorf("unable to download templates: %w", err)
-	}
-
-	if err := templates.Catalog().Download(ctx); err != nil {
-		return models.Path{}, fmt.Errorf("unable to download catalog: %w", err)
 	}
 
 	return mp, nil
